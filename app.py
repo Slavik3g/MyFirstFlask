@@ -56,7 +56,7 @@ def log_request(req: 'flask_request', res: str) -> None:
         cursor.execute(_SQL, (req.form['phrase'],
                               req.form['letters'],
                               req.remote_addr,
-                              'NULL',
+                              req.headers.get('User-Agent'),
                               res,))
 
 
