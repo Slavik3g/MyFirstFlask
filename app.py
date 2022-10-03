@@ -1,7 +1,12 @@
 from flask import Flask, render_template, request, escape
-import mysql.connector
+from DBcm import UseDatabase
 
 app = Flask(__name__)
+
+app.config['dbconfig'] = {'host': '127.0.0.1',
+                          'user': 'root',
+                          'password': 'Slavik2477766',
+                          'database': 'vsearchlogDB', }
 
 
 @app.route('/search', methods=['POST'])
@@ -26,13 +31,12 @@ def entry_page() -> 'html':
 
 @app.route('/viewlog')
 def view_the_log() -> 'html':
-    contents = []
-    with open('vsearchlogs.txt') as logs:
-        for line in logs:
-            contents.append([])
-            for item in line.split('|'):
-                contents[-1].append(escape(item))
-    titles = ('Form Data', 'Remote_addr', 'User_agent', 'Results')
+    with UseDatabase(app.config['dbconfig']) as cursor:
+        _SQL = """select phrase, letters, ip, browser_string, results
+                  from log"""
+        cursor.execute(_SQL)
+        contents = cursor.fetchall()
+    titles = ('Phrase', 'Letters', 'Remote_addr', 'User_agent', 'Results')
     return render_template('logs.html',
                            the_title='View Log',
                            the_row_titles=titles,
@@ -44,24 +48,16 @@ def search4letters(vowels, word):
 
 
 def log_request(req: 'flask_request', res: str) -> None:
-    dbconfig = {'host': '127.0.0.1',
-                'user': 'root',
-                'password': 'Slavik2477766',
-                'database': 'vsearchlogDB', }
-    conn = mysql.connector.connect(**dbconfig)
-    cursor = conn.cursor()
-    _SQL = """insert into log 
-     (phrase, letters, ip, browser_string, results) 
-     values 
-     (%s, %s, %s, %s, %s)"""
-    cursor.execute(_SQL, (req.form['phrase'],
-                          req.form['letters'],
-                          req.remote_addr,
-                          'NULL',
-                          res,))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    with UseDatabase(app.config['dbconfig']) as cursor:
+        _SQL = """insert into log 
+         (phrase, letters, ip, browser_string, results) 
+         values 
+         (%s, %s, %s, %s, %s)"""
+        cursor.execute(_SQL, (req.form['phrase'],
+                              req.form['letters'],
+                              req.remote_addr,
+                              'NULL',
+                              res,))
 
 
 if __name__ == '__main__':
